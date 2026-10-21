@@ -4,7 +4,7 @@ A simple TCP port scanner written in Python using the built-in `socket` module.
 
 ## Features
 
-- Accepts a hostname or IPv4 address as input.
+- Accepts a hostname, IPv4 or IPv6 address as input.
 - Scans a user-defined range of TCP ports.
 - Identifies and displays open ports.
 - Reports how long the scan took.
@@ -44,7 +44,7 @@ Scan completed in 0:00:01.234567.
 
 - Scans ports sequentially.
 - Uses a fixed connection timeout of 0.5 seconds per port.
-- Supports IPv4 only.
+- Uses only the first resolved address out of all possible IPv4 and IPv6 addresses. 
 
 ## Disclaimer
 

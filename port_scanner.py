@@ -2,22 +2,34 @@
 
 import socket
 import re
-import datetime
+import time
 import sys
+
 
 def get_ip_address():
     while True:
-        host = input("Enter the hostname or IP address of the machine you want to scan: ").strip()
+        host = input(
+            "Enter the hostname or IP address of the machine you want to scan: "
+        ).strip()
 
-        if host == "":
+        if not host:
             print("Hostname or IP address cannot be empty. Try again.")
             continue
 
+        # Remove optional brackets around IPv6 addresses.
+        if host.startswith("[") and host.endswith("]"):
+            host = host[1:-1]
+
         try:
-            return socket.gethostbyname(host)
+            results = socket.getaddrinfo(
+                host, None, socket.AF_UNSPEC, socket.SOCK_STREAM
+            )
+
+            family, _, _, _, address = results[0]
+            return family, address
+
         except socket.gaierror:
             print("Hostname could not be resolved. Try again.")
-            continue
 
 
 def get_port_range():
@@ -44,20 +56,23 @@ def get_port_range():
         return port_min, port_max
 
 
-def scan(ip_address, port_min, port_max):
+def scan(address_family, address, port_min, port_max):
     open_ports = []
 
     for port in range(port_min, port_max + 1):
         try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            # Preserve the address structure, including IPv6 scope information.
+            target = list(address)
+            target[1] = port
+
+            with socket.socket(address_family, socket.SOCK_STREAM) as s:
                 s.settimeout(0.5)
-                
-                if s.connect_ex((ip_address, port)) == 0:
+
+                if s.connect_ex(tuple(target)) == 0:
                     open_ports.append(port)
 
         except OSError as error:
             print(f"Socket error on port {port}: {error}")
-            continue
 
     return open_ports
 
@@ -72,28 +87,36 @@ def display_results(open_ports):
 
 
 def display_duration(start_time):
-    elapsed = datetime.datetime.now()
-    print(f"\nScan completed in {elapsed - start_time}.")
+    elapsed = time.perf_counter() - start_time
+    print(f"\nScan completed in {elapsed:.2f} seconds.\n")
 
 
 def main():
-    try: 
+    try:
         print("\033[2J\033[H", end="")
 
-        print("PORT SCANNER v0.1.0")
+        print("\nPYTHON PORT SCANNER")
         print("-" * 40)
 
-        ip_address = get_ip_address()
+        address_family, address = get_ip_address()
         port_min, port_max = get_port_range()
 
-        start_time = datetime.datetime.now()
-        open_ports = scan(ip_address, port_min, port_max)
+        print(
+            f"\nScanning {address[0]} "
+            f"from port {port_min} to {port_max}..."
+        )
+
+        start_time = time.perf_counter()
+
+        open_ports = scan(
+            address_family, address, port_min, port_max
+        )
 
         display_results(open_ports)
         display_duration(start_time)
 
     except KeyboardInterrupt:
-        print("\nYou pressed Ctrl+C. Exiting...")
+        print("\n\nYou pressed Ctrl+C. Exiting...\n")
         sys.exit(130)
 
 
